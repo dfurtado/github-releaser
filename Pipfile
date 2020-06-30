@@ -12,4 +12,4 @@ yaspin = "*"
 python_version = "3.8"
 
 [dev-packages]
-twine = "*"
+twine = "==1.14.0"
