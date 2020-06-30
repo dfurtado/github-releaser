@@ -1,4 +1,3 @@
-import os
 import requests
 
 from os import path
@@ -16,7 +15,7 @@ MAX_UPLOAD = 10
 
 def _validate_required(arg_name: str, value: str) -> None:
     if not value:
-        raise ArgumentError(f"field is required: {arg_name}")
+        raise ArgumentError("field is required: {}".format(arg_name))
 
 
 class GithubReleaser:
@@ -50,7 +49,7 @@ class GithubReleaser:
     ) -> Any:
         """ Create a new release on the specified repository
         Github API: POST /repos/:owner/:repo/releases """
-        with yaspin(text=f"Creating release {tag_name}") as spinner:
+        with yaspin(text="Creating release {}".format(tag_name)) as spinner:
             data = {
                 "tag_name": tag_name,
                 "name": name if name else tag_name,
@@ -58,13 +57,13 @@ class GithubReleaser:
                 "body": "",
             }
 
-            url = f"{API_BASEURL}/repos/{self._account}/{self._repository}/releases"
+            url = "{}/repos/{}/{}/releases".format(API_BASEURL, self._account, self._repository)
 
             response = requests.post(url, json=data, auth=self.auth)
 
             if response.status_code != HTTPStatus.CREATED:
                 spinner.fail()
-                raise ReleaseError(f"Could not create the release {tag_name}")
+                raise ReleaseError("Could not create the release {}".format(tag_name))
 
             response_json = response.json()
             spinner.ok()
@@ -77,8 +76,7 @@ class GithubReleaser:
         release = self._releases.get(tag_name, None)
         if release:
             return release.upload_url
-
-        url = f"{API_BASEURL}/repos/{self._account}/{self._repository}/releases/tags/{tag_name}"
+        url = "{}/repos/{}/{}/releases/tags/{}".format(API_BASEURL, self._account, self._repository, tag_name)
         response = requests.get(url, auth=self.auth)
         response_json = response.json()
         url = response_json.get("upload_url", None)
@@ -93,13 +91,13 @@ class GithubReleaser:
         Github API: POST :server/repos/:owner/:repo/releases/:release_id/assets{?name,label}"""
 
         if len(files) > MAX_UPLOAD:
-            raise ArgumentError(f"cannot upload more than {MAX_UPLOAD} files")
+            raise ArgumentError("cannot upload more than {} files".format(MAX_UPLOAD))
 
-        with yaspin(text=f"Checking release for tag {tag_name}") as spinner:
+        with yaspin(text="Checking release for tag {}".format(tag_name)) as spinner:
             upload_url = self._get_release_upload_url(tag_name)
             if not upload_url:
                 raise ArgumentError(
-                    f"Could not get the upload URL or the release with tag {tag_name} does not exist"
+                    "Could not get the upload URL or the release with tag {} does not exist".format(tag_name)
                 )
             spinner.ok()
 
@@ -111,10 +109,10 @@ class GithubReleaser:
             for file in files:
                 abspath = path.abspath(file)
                 filename = path.basename(abspath)
-                url = f"{upload_url}?name={filename}"
+                url = "{}?name={}".format(upload_url, filename)
 
                 spinner.write(
-                    f"Uploading '{abspath}' to '{self._account}/{self._repository}/{tag_name}'"
+                    "Uploading '{}' to '{}/{}/{}'".format(abspath, self._account, self._repository, tag_name)
                 )
 
                 with open(abspath, "rb") as f:
@@ -126,7 +124,7 @@ class GithubReleaser:
 
                     if response.status_code != HTTPStatus.CREATED:
                         spinner.fail()
-                        raise UploadError(f"Could not upload the file")
+                        raise UploadError("Could not upload the file")
 
-                    spinner.write(f"Upload complete")
+                    spinner.write("Upload complete")
                 spinner.ok()
