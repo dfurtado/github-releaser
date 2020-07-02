@@ -1,5 +1,11 @@
 # History
 
-### 0.1.0 (2018-11-25)
+### 0.1.0 (2020-05-30)
 
 * First release on PyPI.
+
+### 0.1.1 (2020-06-02)
+
+* Renamed the environment variable to `GITHUB_TOKEN`
+* Updated documentation on how to pass token to `github-releaser` and
+information on how to create the token on GitHub.

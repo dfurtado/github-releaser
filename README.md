@@ -35,6 +35,14 @@ The example above uploads all `.zip` files from the `assets` directory to a rele
 
 To see all the options use: `github-releaser upload-assets --help`
 
+### GitHub's personal access token
+
+It is required to use a GitHub's personal access token to use the commands described above.
+The personal access token can be passed directly in the command line using the option `--token` or
+set to an environment variable called `GITHUB_TOKEN`.
+More information on how to create a GitHub's token can
+be found [here](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token)
+
 ## Copyright and License
 
 Copyright (c) 2020 Daniel Furtado. Code released under MIT license
