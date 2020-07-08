@@ -6,6 +6,7 @@ from typing import Any, List
 from yaspin import yaspin
 from base64 import b64encode
 import urllib.parse
+import json
 
 from .exceptions import ReleaseError, UploadError, ArgumentError
 from .release import Release
@@ -137,7 +138,7 @@ class GithubReleaser:
 
         if len(files) > MAX_UPLOAD:
             raise ArgumentError(
-                "cannot upload more than {} files".format(MAX_UPLOAD))
+                "cannot push more than {} files".format(MAX_UPLOAD))
 
         if not branch_name:
             branch_name = "master"
@@ -169,22 +170,56 @@ class GithubReleaser:
                         abspath, self._account, self._repository, branch_name)
                 )
 
+                spinner.write(
+                    "Verifying whether the file '{}' exists in '{}/{}/{}'".format(
+                        destPath, self._account, self._repository, branch_name)
+                )
+                res = requests.get(
+                    url, json={"ref": branch_name}, headers={"Content-type": "application/json"}, auth=self.auth
+                )
+                sha = ""
+                if res.ok:
+                    spinner.write(
+                        "Updating the file '{}'".format(destPath))
+                    result = json.loads(res.text)
+                    sha = result.get("sha")
+                else:
+                    spinner.write(
+                        "Adding the file '{}'".format(destPath))
+
+                if not message:
+                    if sha:
+                        message = "Updated {}".format(destPath)
+                    else:
+                        message = "Added {}".format(destPath)
+
                 with open(abspath, "rb") as f:
                     file_data = f.read()
                     file_data = b64encode(file_data).decode("utf-8")
-                    put_parameters = {"message": message, "content": file_data}
-                    put_parameters["branch"] = branch_name
+                    put_parameters = {"branch": branch_name,
+                                      "message": message,
+                                      "content": file_data,
+                                      "sha": sha}
 
                     headers = {
-                        "Content-type": "application/octet-stream",
+                        "Content-type": "application/json",
                     }
                     response = requests.put(
-                        url, params=put_parameters, headers=headers, auth=self.auth
+                        url, json=put_parameters, headers=headers, auth=self.auth
                     )
 
-                    if response.status_code != HTTPStatus.CREATED:
+                    if response.ok or response.status_code != HTTPStatus.CREATED:
+                        result = json.loads(response.text)
+                        if sha == result["content"]["sha"]:
+                            spinner.write(
+                                "No changes in the file '{}' detected, did nothing".format(destPath))
+                        else:
+                            spinner.write(
+                                "Pushed the file '{}'".format(destPath))
+                    else:
                         spinner.fail()
-                        raise UploadError("Could not push the file")
+                        result = json.loads(response.text)
+                        raise UploadError(
+                            "Could not push the file. {} (Code: {})".format(result.get("message"), response.status_code))
 
-                    spinner.write("Push complete")
                 spinner.ok()
