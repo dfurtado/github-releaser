@@ -35,6 +35,20 @@ The example above uploads all `.zip` files from the `assets` directory to a rele
 
 To see all the options use: `github-releaser upload-assets --help`
 
+### Commit and push files to a branch
+
+Sometimes it is useful to commit and push new files to a specific branch. One possible scenario is
+when files are auto-generated during a build in a CI environment, and there is a requirement to
+include them to a branch. For example:
+
+```shell script
+github-releaser push-files --account myuser --repository myrepo myfile.txt
+```
+In this example, a file named `myfile.txt` is added to the `master` at `myuser/myrepo`
+
+To see all the options use: `github-releaser push-files --help`
+
+
 ### GitHub's personal access token
 
 It is required to use a GitHub's personal access token to use the commands described above.
