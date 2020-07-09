@@ -8,7 +8,7 @@ from github_releaser import GithubReleaser
 @click.option("--account", "--a", required=True, help="Account")
 @click.option("--repository", "--r", required=True, help="Repository")
 @click.option("--token", help="GitHub's API token")
-@click.option("--branch-name", "--b", help="The branch name. Default: master")
+@click.option("--branch-name", "--b", default="master", help="The branch name.")
 @click.option("--dest-dir", "--d", help="The destination subfolder inside the repository. Omit if pushing to the root")
 @click.option("--message", "--msg", help="The message. Default: Added/updated {file name}")
 @click.argument("files", nargs=-1, type=str)
