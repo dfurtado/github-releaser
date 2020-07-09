@@ -4,6 +4,9 @@ from os import path
 from http import HTTPStatus
 from typing import Any, List
 from yaspin import yaspin
+from base64 import b64encode
+import urllib.parse
+import json
 
 from .exceptions import ReleaseError, UploadError, ArgumentError
 from .release import Release
@@ -127,4 +130,96 @@ class GithubReleaser:
                         raise UploadError("Could not upload the file")
 
                     spinner.write("Upload complete")
+                spinner.ok()
+
+    def push_files(self, branch_name: str, dest_dir: str, message: str, files: List[str]) -> None:
+        """ Push new files to a specified branch
+        Github API: PUT /repos/:owner/:repo/contents/:path"""
+
+        if len(files) > MAX_UPLOAD:
+            raise ArgumentError(
+                "cannot push more than {} files".format(MAX_UPLOAD))
+
+        if not branch_name:
+            branch_name = "master"
+
+        with yaspin(text="Checking the branch exists {}".format(branch_name)) as spinner:
+
+            url = "{}/repos/{}/{}/branches/{}".format(
+                API_BASEURL, self._account, self._repository, branch_name)
+            response = requests.get(url, auth=self.auth)
+            if not response.ok:
+                raise ArgumentError(
+                    "Could not get the branch {}".format(branch_name)
+                )
+            spinner.ok()
+
+        with yaspin(text="Pushing the files") as spinner:
+            for file in files:
+                abspath = path.abspath(file)
+                filename = path.basename(abspath)
+                destPath = filename
+                if dest_dir:
+                    destPath = "{}/{}".format(dest_dir, filename)
+
+                url = "{}/repos/{}/{}/contents/{}".format(
+                    API_BASEURL, self._account, self._repository, urllib.parse.quote(destPath))
+
+                spinner.write(
+                    "Pushing '{}' to '{}/{}/{}'".format(
+                        abspath, self._account, self._repository, branch_name)
+                )
+
+                spinner.write(
+                    "Verifying whether the file '{}' exists in '{}/{}/{}'".format(
+                        destPath, self._account, self._repository, branch_name)
+                )
+                res = requests.get(
+                    url, json={"ref": branch_name}, headers={"Content-type": "application/json"}, auth=self.auth
+                )
+                sha = ""
+                if res.ok:
+                    spinner.write(
+                        "Updating the file '{}'".format(destPath))
+                    result = json.loads(res.text)
+                    sha = result.get("sha")
+                else:
+                    spinner.write(
+                        "Adding the file '{}'".format(destPath))
+
+                if not message:
+                    if sha:
+                        message = "Updated {}".format(destPath)
+                    else:
+                        message = "Added {}".format(destPath)
+
+                with open(abspath, "rb") as f:
+                    file_data = f.read()
+                    file_data = b64encode(file_data).decode("utf-8")
+                    put_parameters = {"branch": branch_name,
+                                      "message": message,
+                                      "content": file_data,
+                                      "sha": sha}
+
+                    headers = {
+                        "Content-type": "application/json",
+                    }
+                    response = requests.put(
+                        url, json=put_parameters, headers=headers, auth=self.auth
+                    )
+
+                    if response.ok or response.status_code != HTTPStatus.CREATED:
+                        result = json.loads(response.text)
+                        if sha == result["content"]["sha"]:
+                            spinner.write(
+                                "No changes in the file '{}' detected, did nothing".format(destPath))
+                        else:
+                            spinner.write(
+                                "Pushed the file '{}'".format(destPath))
+                    else:
+                        spinner.fail()
+                        result = json.loads(response.text)
+                        raise UploadError(
+                            "Could not push the file. {} (Code: {})".format(result.get("message"), response.status_code))
+
                 spinner.ok()
