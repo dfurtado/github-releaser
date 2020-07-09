@@ -6,4 +6,4 @@
 
 ## Contributors
 
-None yet. Why not be the first?
+* Alieksandra Kritskaia <aleksandra.kritskaia@gmail.com>
