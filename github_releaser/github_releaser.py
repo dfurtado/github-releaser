@@ -145,9 +145,6 @@ class GithubReleaser:
             raise ArgumentError(
                 "cannot push more than {} files".format(MAX_UPLOAD))
 
-        if not branch_name:
-            branch_name = "master"
-
         with yaspin(text="Checking the branch exists {}".format(branch_name)) as spinner:
 
             url = "{}/repos/{}/{}/branches/{}".format(
