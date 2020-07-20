@@ -225,3 +225,54 @@ class GithubReleaser:
                             "Could not push the file. {} (Code: {})".format(result.get("message"), response.status_code))
 
                 spinner.ok()
+
+    def get_prev_release_asset(self, asset: str, out_dir: str) -> None:
+        """ Downloads an asset of previous release to a specified directory
+        Github API: GET /repos/:owner/:repo/releases?per_page=2
+                    GET /repos/:owner/:repo/releases/assets/:asset_id"""
+
+        if not out_dir:
+            out_dir = "."
+
+        url = "{}/repos/{}/{}/releases?per_page=2".format(
+            API_BASEURL, self._account, self._repository)
+        response = requests.get(url, auth=self.auth)
+        response_json = response.json()
+
+        if not response.ok:
+            raise UploadError(
+                "Could not get the releases for the repo. {} (Code: {})".format(response_json.get("message", None), response.status_code))
+        if len(response_json) == 0:
+            print("No releases")
+            return
+
+        if len(response_json) == 1:
+            print("There is only one release")
+            return
+
+        prev_tag = response_json[1].get("tag_name")
+        print("Previous release found " + prev_tag)
+
+        assets = response_json[1].get("assets")
+        if len(assets) == 0:
+            print("The release doesn't have assets")
+            return
+
+        for a in assets:
+            if asset.lower() == a.get("name").lower():
+                print("Getting the asset")
+
+                download_url = "{}/repos/{}/{}/releases/assets/{}".format(
+                    API_BASEURL, self._account, self._repository, a.get("id"))
+                a_content = requests.get(download_url, auth=self.auth)
+
+                if a_content.ok:
+                    dest = path.join(out_dir, asset)
+                    with open(dest, "wb") as f:
+                        f.write(a_content.content)
+                        print(
+                            "The asset downloaded successfully to {}".format(dest))
+                else:
+                    raise UploadError(
+                        "Could not get an asset {} for the release tagged {}. {} (Code: {})".format(
+                            asset, prev_tag, response_json.get("message", None), response.status_code))
