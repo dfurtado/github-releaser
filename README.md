@@ -28,12 +28,30 @@ created.
 
 Give that there is already a release `v1.0.10` at `myuser/myrepo`, it is possible to add assets with the following command:
 ```shell script
-github-releaser upload-assets --account myuser --repository myrepo --tagname v1.0.10 assets/*.zip
+github-releaser upload-assets --account myuser --repository myrepo --tag-name v1.0.10 assets/*.zip
 ```
 
 The example above uploads all `.zip` files from the `assets` directory to a release `v1.0.10` at `myuser/myrepo`.
 
 To see all the options use: `github-releaser upload-assets --help`
+
+### Downloading assets
+
+The command `download-assets` to get assets of a release. 
+
+Given that there is a release `v1.0.10` at `myuser/myrepo`, to download the assets the following command could be used:
+```shell script
+github-releaser download-assets --account myuser --repository myrepo --tag-name v1.0.10 --dir './downloads' '*.zip' 'content.txt' 'msi*'
+```
+
+The example above downloads all assets with `.zip` extension as well as those which name begins with `msi` and the `content.txt` asset from the release `v1.0.10` assets to the directory `./downloads`.
+
+The following are the possible options of using wildcard for selecting which assets to download:
+- only '*' - downloads all assets of the release
+- starts with star, e.g. '*.zip' downloads all assets with .zip extention
+- ends with star, e.g. 'msi*' downloads all assets which name begins with 'msi'
+
+To see all the options use: `github-releaser download-assets --help`
 
 ### Commit and push files to a branch
 
