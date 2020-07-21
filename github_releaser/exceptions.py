@@ -8,3 +8,7 @@ class UploadError(Exception):
 
 class ReleaseError(Exception):
     pass
+
+
+class DownloadError(Exception):
+    pass

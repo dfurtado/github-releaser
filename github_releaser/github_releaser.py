@@ -1,4 +1,5 @@
 import requests
+import os
 
 from os import path
 from http import HTTPStatus
@@ -8,7 +9,7 @@ from base64 import b64encode
 import urllib.parse
 import json
 
-from .exceptions import ReleaseError, UploadError, ArgumentError
+from .exceptions import ReleaseError, UploadError, ArgumentError, DownloadError
 from .release import Release
 
 
@@ -234,45 +235,70 @@ class GithubReleaser:
         if not out_dir:
             out_dir = "."
 
-        url = "{}/repos/{}/{}/releases?per_page=2".format(
-            API_BASEURL, self._account, self._repository)
-        response = requests.get(url, auth=self.auth)
-        response_json = response.json()
+        with yaspin(text="Getting previous release") as spinner:
 
-        if not response.ok:
-            raise UploadError(
-                "Could not get the releases for the repo. {} (Code: {})".format(response_json.get("message", None), response.status_code))
-        if len(response_json) == 0:
-            print("No releases")
-            return
+            url = "{}/repos/{}/{}/releases?per_page=2".format(
+                API_BASEURL, self._account, self._repository)
+            response = requests.get(url, auth=self.auth)
+            response_json = response.json()
 
-        if len(response_json) == 1:
-            print("There is only one release")
-            return
+            if not response.ok:
+                spinner.fail()
+                raise DownloadError(
+                    "Could not get releases for the repo. {} (Code: {})".format(response_json.get("message", None), response.status_code))
 
-        prev_tag = response_json[1].get("tag_name")
-        print("Previous release found " + prev_tag)
+            if len(response_json) == 0:
+                spinner.write("No releases found")
+                spinner.fail()
+                return
 
-        assets = response_json[1].get("assets")
-        if len(assets) == 0:
-            print("The release doesn't have assets")
-            return
+            if len(response_json) == 1:
+                spinner.write("Only the latest release found")
+                spinner.fail()
+                return
 
-        for a in assets:
-            if asset.lower() == a.get("name").lower():
-                print("Getting the asset")
+            prev_tag = response_json[1].get("tag_name")
+            spinner.write("Previous release found " + prev_tag)
 
-                download_url = "{}/repos/{}/{}/releases/assets/{}".format(
-                    API_BASEURL, self._account, self._repository, a.get("id"))
-                a_content = requests.get(download_url, auth=self.auth)
+            assets = response_json[1].get("assets")
+            if len(assets) == 0:
+                spinner.write("The release doesn't have any assets")
+                spinner.fail()
+                return
 
-                if a_content.ok:
-                    dest = path.join(out_dir, asset)
-                    with open(dest, "wb") as f:
-                        f.write(a_content.content)
-                        print(
-                            "The asset downloaded successfully to {}".format(dest))
-                else:
-                    raise UploadError(
-                        "Could not get an asset {} for the release tagged {}. {} (Code: {})".format(
-                            asset, prev_tag, response_json.get("message", None), response.status_code))
+            assetId = ""
+            for a in assets:
+                if asset.lower() == a.get("name").lower():
+                    assetId = a.get("id")
+                    spinner.write(
+                        "The asset {} found, id {}".format(asset, assetId))
+
+            if not assetId:
+                spinner.write("The asset {} is not found".format(asset))
+                spinner.fail()
+                return
+
+            spinner.ok()
+
+        with yaspin(text="Downloading the asset") as spinner:
+
+            download_url = "{}/repos/{}/{}/releases/assets/{}".format(
+                API_BASEURL, self._account, self._repository, a.get("id"))
+            a_content = requests.get(download_url, auth=self.auth)
+
+            if not a_content.ok:
+                spinner.fail()
+                raise DownloadError(
+                    "Could not get an asset {} for the release tagged {}. {} (Code: {})".format(
+                        asset, prev_tag, response_json.get("message", None), response.status_code))
+
+            if not path.exists(out_dir):
+                os.makedirs(out_dir)
+
+            dest = path.join(out_dir, asset)
+            with open(dest, "wb") as f:
+                f.write(a_content.content)
+                spinner.write(
+                    "The asset downloaded successfully to {}".format(dest))
+
+            spinner.ok()
