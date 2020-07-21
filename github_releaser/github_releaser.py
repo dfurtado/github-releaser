@@ -257,35 +257,49 @@ class GithubReleaser:
         for asset in assets:
             with yaspin(text="Downloading {}".format(asset)) as spinner:
                 assetId = ""
+                assetName = ""
                 for ra in release_assets:
-                    if asset.lower() == ra.get("name").lower():
+                    ra_name = ra.get("name").lower()
+                    matches = 0
+                    if asset.startswith("*"):
+                        x = asset.replace("*", "")
+                        if ra_name.endswith(x):
+                            matches = 1
+                    if asset.endswith("*"):
+                        x = asset.replace("*", "")
+                        if ra_name.startswith(x):
+                            matches = 1
+                    else:
+                        if asset.lower() == ra_name:
+                            matches = 1
+
+                    if matches == 1:
                         assetId = ra.get("id")
-                        break
+                        assetName = ra.get("name")
+                        spinner.write(
+                            "Found matching asset with name {}, id: {}. Downloading...".format(assetName, assetId))
+
+                        download_url = "{}/repos/{}/{}/releases/assets/{}".format(
+                            API_BASEURL, self._account, self._repository, assetId)
+                        a_content = requests.get(download_url, auth=self.auth)
+
+                        if not a_content.ok:
+                            spinner.write("Could not download the asset. {} (Code: {})".format(
+                                a_content.get("message", None), a_content.status_code))
+                            spinner.fail()
+                            continue
+
+                        if not path.exists(out_dir):
+                            os.makedirs(out_dir)
+
+                        dest = path.join(out_dir, assetName)
+                        with open(dest, "wb") as f:
+                            f.write(a_content.content)
+                            spinner.write(
+                                "Downloaded to {}".format(dest))
+                            spinner.ok()
 
                 if not assetId:
-                    spinner.write("The asset is not found")
+                    spinner.write("No matching asset is found")
                     spinner.fail()
                     continue
-
-                spinner.write(
-                    "Found the asset, id: {}. Downloading...".format(assetId))
-
-                download_url = "{}/repos/{}/{}/releases/assets/{}".format(
-                    API_BASEURL, self._account, self._repository, assetId)
-                a_content = requests.get(download_url, auth=self.auth)
-
-                if not a_content.ok:
-                    spinner.write("Could not download the asset. {} (Code: {})".format(
-                        a_content.get("message", None), a_content.status_code))
-                    spinner.fail()
-                    continue
-
-                if not path.exists(out_dir):
-                    os.makedirs(out_dir)
-
-                dest = path.join(out_dir, asset)
-                with open(dest, "wb") as f:
-                    f.write(a_content.content)
-                    spinner.write(
-                        "Downloaded to {}".format(dest))
-                    spinner.ok()
