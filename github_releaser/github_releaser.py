@@ -261,11 +261,13 @@ class GithubReleaser:
                 for ra in release_assets:
                     ra_name = ra.get("name").lower()
                     matches = 0
-                    if asset.startswith("*"):
+                    if asset == "*":
+                        matches = 1
+                    elif asset.startswith("*"):
                         x = asset.replace("*", "")
                         if ra_name.endswith(x):
                             matches = 1
-                    if asset.endswith("*"):
+                    elif asset.endswith("*"):
                         x = asset.replace("*", "")
                         if ra_name.startswith(x):
                             matches = 1
