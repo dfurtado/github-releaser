@@ -4,7 +4,7 @@ import os
 from github_releaser import GithubReleaser
 
 
-@click.command(name="upload-assets", help="Upload assets to a existent release")
+@click.command(name="upload-assets", help="Upload assets to existent release")
 @click.option("--account", "--a", required=True, help="Account")
 @click.option("--repository", "--r", required=True, help="Repository")
 @click.option("--token", help="GitHub's API token")

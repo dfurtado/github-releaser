@@ -227,78 +227,65 @@ class GithubReleaser:
 
                 spinner.ok()
 
-    def get_prev_release_asset(self, asset: str, out_dir: str) -> None:
-        """ Downloads an asset of previous release to a specified directory
-        Github API: GET /repos/:owner/:repo/releases?per_page=2
+    def download_assets(self, tag_name: str, out_dir: str, assets: List[str]) -> None:
+        """ Downloads specified assets of the release to given output directory
+        Github API: GET /repos/:owner/:repo/releases/tags/:tag
                     GET /repos/:owner/:repo/releases/assets/:asset_id"""
 
-        if not out_dir:
-            out_dir = "."
+        with yaspin(text="Getting {} release".format(tag_name)) as spinner:
 
-        with yaspin(text="Getting previous release") as spinner:
-
-            url = "{}/repos/{}/{}/releases?per_page=2".format(
-                API_BASEURL, self._account, self._repository)
+            url = "{}/repos/{}/{}/releases/tags/{}".format(
+                API_BASEURL, self._account, self._repository, tag_name)
             response = requests.get(url, auth=self.auth)
             response_json = response.json()
 
             if not response.ok:
                 spinner.fail()
                 raise DownloadError(
-                    "Could not get releases for the repo. {} (Code: {})".format(response_json.get("message", None), response.status_code))
+                    "Could not find the release {}. {} (Code: {})".format(tag_name, response_json.get("message", None), response.status_code))
 
-            if len(response_json) == 0:
-                spinner.write("No releases found")
-                spinner.fail()
-                return
+            spinner.write("Release is found")
 
-            if len(response_json) == 1:
-                spinner.write("Only the latest release found")
-                spinner.fail()
-                return
-
-            prev_tag = response_json[1].get("tag_name")
-            spinner.write("Previous release found " + prev_tag)
-
-            assets = response_json[1].get("assets")
-            if len(assets) == 0:
+            release_assets = response_json.get("assets")
+            if len(release_assets) == 0:
                 spinner.write("The release doesn't have any assets")
                 spinner.fail()
                 return
 
-            assetId = ""
-            for a in assets:
-                if asset.lower() == a.get("name").lower():
-                    assetId = a.get("id")
-                    spinner.write(
-                        "The asset {} found, id {}".format(asset, assetId))
-
-            if not assetId:
-                spinner.write("The asset {} is not found".format(asset))
-                spinner.fail()
-                return
-
             spinner.ok()
 
-        with yaspin(text="Downloading the asset") as spinner:
+        for asset in assets:
+            with yaspin(text="Downloading {}".format(asset)) as spinner:
+                assetId = ""
+                for ra in release_assets:
+                    if asset.lower() == ra.get("name").lower():
+                        assetId = ra.get("id")
+                        break
 
-            download_url = "{}/repos/{}/{}/releases/assets/{}".format(
-                API_BASEURL, self._account, self._repository, a.get("id"))
-            a_content = requests.get(download_url, auth=self.auth)
+                if not assetId:
+                    spinner.write("The asset is not found")
+                    spinner.fail()
+                    continue
 
-            if not a_content.ok:
-                spinner.fail()
-                raise DownloadError(
-                    "Could not get an asset {} for the release tagged {}. {} (Code: {})".format(
-                        asset, prev_tag, response_json.get("message", None), response.status_code))
-
-            if not path.exists(out_dir):
-                os.makedirs(out_dir)
-
-            dest = path.join(out_dir, asset)
-            with open(dest, "wb") as f:
-                f.write(a_content.content)
                 spinner.write(
-                    "The asset downloaded successfully to {}".format(dest))
+                    "Found the asset, id: {}. Downloading...".format(assetId))
 
-            spinner.ok()
+                download_url = "{}/repos/{}/{}/releases/assets/{}".format(
+                    API_BASEURL, self._account, self._repository, assetId)
+                a_content = requests.get(download_url, auth=self.auth)
+
+                if not a_content.ok:
+                    spinner.write("Could not download the asset. {} (Code: {})".format(
+                        a_content.get("message", None), a_content.status_code))
+                    spinner.fail()
+                    continue
+
+                if not path.exists(out_dir):
+                    os.makedirs(out_dir)
+
+                dest = path.join(out_dir, asset)
+                with open(dest, "wb") as f:
+                    f.write(a_content.content)
+                    spinner.write(
+                        "Downloaded to {}".format(dest))
+                    spinner.ok()

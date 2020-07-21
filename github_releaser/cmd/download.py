@@ -4,13 +4,14 @@ import os
 from github_releaser import GithubReleaser
 
 
-@click.command(name="prev-release-asset", help="Get previous release asset")
+@click.command(name="download-assets", help="Download release assets")
 @click.option("--account", "--a", required=True, help="Account")
 @click.option("--repository", "--r", required=True, help="Repository")
 @click.option("--token", help="GitHub's API token")
-@click.option("--asset", "--at", required=True, help="Asset name to download")
-@click.option("--output", "--dir", help="Output directory for downloaded asset. Omit if downloading to the root")
-def prev_release_asset(account, repository, token, asset, output):
+@click.option("--tag-name", "--t", required=True, help="The tag, eg: v1.0.0")
+@click.option("--out-dir", "--dir", default=".", help="Output directory for downloaded assets. Omit to place them to the current working directory")
+@click.argument("assets", nargs=-1, type=str)
+def download_assets(account, repository, token, tag_name, out_dir, assets):
 
     access_token = token or os.getenv("GITHUB_TOKEN", None)
 
@@ -20,4 +21,4 @@ def prev_release_asset(account, repository, token, asset, output):
         )
 
     gh = GithubReleaser(account, repository, access_token)
-    gh.get_prev_release_asset(asset, output)
+    gh.download_assets(tag_name, out_dir, assets)
