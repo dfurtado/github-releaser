@@ -82,6 +82,11 @@ class GithubReleaser:
         url = "{}/repos/{}/{}/releases/tags/{}".format(API_BASEURL, self._account, self._repository, tag_name)
         response = requests.get(url, auth=self.auth)
         response_json = response.json()
+
+        if not response.ok:
+            raise UploadError(
+                "Could not get the upload URL. {} (Code: {})".format(response_json.get("message", None), response.status_code))
+
         url = response_json.get("upload_url", None)
         if url:
             url = url[0 : url.index("{")]
