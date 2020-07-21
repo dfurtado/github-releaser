@@ -261,7 +261,7 @@ class GithubReleaser:
                 for ra in release_assets:
                     ra_name = ra.get("name").lower()
                     matches = 0
-                    if asset == "*":
+                    if asset == "*" or asset.lower() == ra_name:
                         matches = 1
                     elif asset.startswith("*"):
                         x = asset.replace("*", "")
@@ -270,9 +270,6 @@ class GithubReleaser:
                     elif asset.endswith("*"):
                         x = asset.replace("*", "")
                         if ra_name.startswith(x):
-                            matches = 1
-                    else:
-                        if asset.lower() == ra_name:
                             matches = 1
 
                     if matches == 1:
