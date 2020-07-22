@@ -293,10 +293,16 @@ class GithubReleaser:
 
                         dest = path.join(out_dir, assetName)
                         with open(dest, "wb") as f:
-                            f.write(a_content.content)
-                            spinner.write(
-                                "Downloaded to {}".format(dest))
-                            spinner.ok()
+                            try:
+                                f.write(a_content.content)
+                                spinner.write(
+                                    "Downloaded to {}".format(dest))
+                                spinner.ok()
+                            except:
+                                spinner.write("Could not save {} to {}. {} (Code: {})".format(
+                                    assetName, dest, a_content.get("message", None), a_content.status_code))
+                                spinner.fail()
+                                continue
 
                 if not assetId:
                     spinner.write("No matching asset is found")
