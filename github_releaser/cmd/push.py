@@ -10,7 +10,7 @@ from github_releaser import GithubReleaser
 @click.option("--token", help="GitHub's API token")
 @click.option("--branch-name", "--b", default="master", help="The branch name.")
 @click.option("--dest-dir", "--d", help="The destination subfolder inside the repository. Omit if pushing to the root")
-@click.option("--message", "--msg", help="The message. Default: Added/updated {file name}")
+@click.option("--message", "--m", help="The message. Default: Added/updated {file name}")
 @click.argument("files", nargs=-1, type=str)
 def push_files(account, repository, token, branch_name, dest_dir, message, files):
 
