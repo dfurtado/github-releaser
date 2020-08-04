@@ -14,3 +14,7 @@ information on how to create the token on GitHub.
 * Include command `push-files`
 * Updated documentation
 * Minor code cleanup
+
+### 0.2.1 (2020-08-04)
+* Renamed push-file's command flag from `--msg` to `--m`
+* Minor fixes
